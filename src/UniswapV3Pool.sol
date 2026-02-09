@@ -12,31 +12,6 @@ contract UniswapV3Pool {
     using Position for mapping(bytes32 => Position.Info);
     using Position for Position.Info;
 
-    int24 internal constant MIN_TICK = -887272;
-    int24 internal constant MAX_TICK = -MIN_TICK;
-
-    //Pool token
-    address public immutable token0;
-    address public immutable token1;
-
-    struct Slot0{
-        //Current sqrt(P)
-        uint160 sqrtPriceX96;
-        //Current tick
-        int24 tick;
-    }
-
-    Slot0 public slot0;
-
-    //Amount of Liquidity
-    uint128 public liquidity;
-
-    //Ticks info
-    mapping(int24 => Tick.Info)public ticks;
-    //Positions info    
-    mapping(bytes32 => Position.Info) public positions; 
-
-    //Errors
     error InsufficientInputAmount();
     error InvalidTickRange();
     error ZeroLiquidity();
@@ -60,22 +35,51 @@ contract UniswapV3Pool {
         uint128 liquidity,
         int24 tick
     );
+
+    int24 internal constant MIN_TICK = -887272;
+    int24 internal constant MAX_TICK = -MIN_TICK;
+
+    // Pool tokens, immutable
+    address public immutable token0;
+    address public immutable token1;
+
+    // First slot will contain essential data
+    struct Slot0 {
+        // Current sqrt(P)
+        uint160 sqrtPriceX96;
+        // Current tick
+        int24 tick;
+    }
+
+    struct CallbackData {
+        address token0;
+        address token1;
+        address payer;
+    }
+
+    Slot0 public slot0;
+
+    // Amount of liquidity, L.
+    uint128 public liquidity;
+
+    // Ticks info
+    mapping(int24 => Tick.Info) public ticks;
+    // Positions info
+    mapping(bytes32 => Position.Info) public positions;
+
     constructor(
-        address _token0,
-        address _token1,
-        uint160 _sqrtPriceX96,
-        int24 _tick
-   ){
-        token0 = _token0;
-        token1 = _token1;
+        address token0_,
+        address token1_,
+        uint160 sqrtPriceX96,
+        int24 tick
+    ) {
+        token0 = token0_;
+        token1 = token1_;
 
-        slot0 = Slot0({
-            sqrtPriceX96:_sqrtPriceX96,
-            tick:_tick
-        });
-    } 
+        slot0 = Slot0({sqrtPriceX96: sqrtPriceX96, tick: tick});
+    }
 
-        function mint(
+    function mint(
         address owner,
         int24 lowerTick,
         int24 upperTick,
@@ -130,26 +134,29 @@ contract UniswapV3Pool {
         );
     }
 
-    function swap(address recipient)
-    public
-    returns (int256 amount0, int256 amount1)
+    function swap(address recipient, bytes calldata data)
+        public
+        returns (int256 amount0, int256 amount1)
     {
         int24 nextTick = 85184;
         uint160 nextPrice = 5604469350942327889444743441197;
 
         amount0 = -0.008396714242162444 ether;
         amount1 = 42 ether;
+
         (slot0.tick, slot0.sqrtPriceX96) = (nextTick, nextPrice);
+
         IERC20(token0).transfer(recipient, uint256(-amount0));
 
         uint256 balance1Before = balance1();
         IUniswapV3SwapCallback(msg.sender).uniswapV3SwapCallback(
             amount0,
             amount1,
-            ""
+            data
         );
-        if (balance1Before + uint256(amount1) < balance1())
+        if (balance1Before + uint256(amount1) > balance1())
             revert InsufficientInputAmount();
+
         emit Swap(
             msg.sender,
             recipient,
@@ -160,6 +167,12 @@ contract UniswapV3Pool {
             slot0.tick
         );
     }
+
+    ////////////////////////////////////////////////////////////////////////////
+    //
+    // INTERNAL
+    //
+    ////////////////////////////////////////////////////////////////////////////
     function balance0() internal returns (uint256 balance) {
         balance = IERC20(token0).balanceOf(address(this));
     }

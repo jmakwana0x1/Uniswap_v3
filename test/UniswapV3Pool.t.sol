@@ -240,7 +240,8 @@ contract UniswapV3PoolTest is Test, TestUtils {
         setupTestCase(params);
 
         vm.expectRevert(encodeError("InsufficientInputAmount()"));
-        pool.swap(address(this), "");
+        pool.swap(address(this), ""
+        );
     }
 
     ////////////////////////////////////////////////////////////////////////////

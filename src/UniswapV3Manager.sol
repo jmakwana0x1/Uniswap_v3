@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.14;
 
-import {UniswapV3Pool} from "../src/UniswapV3Pool.sol";
+import "../src/UniswapV3Pool.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract UniswapV3Manager {
@@ -22,11 +22,19 @@ contract UniswapV3Manager {
             );
     }
 
-    function swap(address poolAddress_, bytes calldata data)
-        public
-        returns (int256, int256)
-    {
-        return UniswapV3Pool(poolAddress_).swap(msg.sender, data);
+    function swap(
+        address poolAddress_,
+        bool zeroForOne,
+        uint256 amountSpecified,
+        bytes calldata data
+    ) public returns (int256, int256) {
+        return
+            UniswapV3Pool(poolAddress_).swap(
+                msg.sender,
+                zeroForOne,
+                amountSpecified,
+                data
+            );
     }
 
     function uniswapV3MintCallback(
